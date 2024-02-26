@@ -16,8 +16,25 @@ def calculate_accuracy(X: np.ndarray, targets: np.ndarray, model: SoftmaxModel) 
     Returns:
         Accuracy (float)
     """
-    # TODO: Implement this function (task 3c)
-    accuracy = 0
+    output = model.forward(X)
+
+    # Turn output into one hot encoded prediction
+    max_indices = np.argmax(output, axis=1)
+    pred = np.zeros_like(output)
+
+    for id, row in zip(max_indices, pred):
+        row[ id ] = 1
+    
+    N = X.shape[0]
+    n_correct = 0 
+
+    # Compare results
+    for pred_row, target_row in zip(pred, targets):
+        if np.array_equal(pred_row, target_row): n_correct += 1
+
+    accuracy = n_correct / N
+
+   
     return accuracy
 
 
@@ -36,7 +53,12 @@ class SoftmaxTrainer(BaseTrainer):
             loss value (float) on batch
         """
         # TODO: Implement this function (task 3b)
-        loss = 0
+
+        output=self.model.forward(X_batch)
+        self.model.backward(X_batch, output, Y_batch)
+        self.model.w-=self.learning_rate *self.model.grad
+
+        loss = cross_entropy_loss(Y_batch,output)
         return loss
 
     def validation_step(self):

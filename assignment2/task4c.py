@@ -1,37 +1,204 @@
 import numpy as np
 import utils
-from task2a import one_hot_encode, pre_process_images, SoftmaxModel, gradient_approximation_test
+import matplotlib.pyplot as plt
+from task2a import cross_entropy_loss, SoftmaxModel, one_hot_encode, pre_process_images
+from trainer import BaseTrainer
+
+np.random.seed(0)
+
+
+def calculate_accuracy(
+    X: np.ndarray, targets: np.ndarray, model: SoftmaxModel
+) -> float:
+    """
+    Args:
+        X: images of shape [batch size, 785]
+        targets: labels/targets of each image of shape: [batch size, 10]
+        model: model of class SoftmaxModel
+    Returns:
+        Accuracy (float)
+    """
+    # TODO: Implement this function (copy from last assignment)
+    
+    output = model.forward(X)
+
+    # Turn output into one hot encoded prediction
+    max_indices = np.argmax(output, axis=1)
+    pred = np.zeros_like(output)
+
+    for id, row in zip(max_indices, pred):
+        row[ id ] = 1
+    
+    N = X.shape[0]
+    n_correct = 0 
+
+    # Compare results
+    for pred_row, target_row in zip(pred, targets):
+        if np.array_equal(pred_row, target_row): n_correct += 1
+
+    accuracy = n_correct / N
+
+    return accuracy
+
+
+class SoftmaxTrainer(BaseTrainer):
+
+    def __init__(
+        self,
+        momentum_gamma: float,
+        use_momentum: bool,  # Task 3d hyperparmeter
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.momentum_gamma = momentum_gamma
+        self.use_momentum = use_momentum
+        # Init a history of previous gradients to use for implementing momentum
+        self.previous_grads = [np.zeros_like(w) for w in self.model.ws]
+
+    def train_step(self, X_batch: np.ndarray, Y_batch: np.ndarray):
+        """
+        Perform forward, backward and gradient descent step here.
+        The function is called once for every batch (see trainer.py) to perform the train step.
+        The function returns the mean loss value which is then automatically logged in our variable self.train_history.
+
+        Args:
+            X: one batch of images
+            Y: one batch of labels
+        Returns:
+            loss value (float) on batch
+        """
+        # TODO: Implement this function (task 2c)
+
+        # Execute model's forward pass with the current batch
+        batch_output = self.model.forward(X_batch)
+
+        # Perform backward pass to compute gradients
+        self.model.backward(X_batch, batch_output, Y_batch)
+        
+        # Update model weights based on gradients and learning rate
+        self.model.weights[0] -= self.learning_rate * self.model.gradient_values[0]
+        self.model.weights[1] -= self.learning_rate * self.model.gradient_values[1]
+        
+        # Incorporate momentum in the weights update if enabled
+        if self.use_momentum:
+            # Apply momentum to weight updates
+            self.model.weights[0] -= self.momentum_rate * self.past_gradients[0]
+            self.model.weights[1] -= self.momentum_rate * self.past_gradients[1]
+        
+            # Refresh the stored gradients for the next iteration
+            self.past_gradients[0] = self.model.gradient_values[0]
+            self.past_gradients[1] = self.model.gradient_values[1]
+        
+        # Calculate and return the loss for the current batch
+        current_loss = cross_entropy_loss(Y_batch, batch_output)
+        return current_loss
+
+        # Code from project:
+        """
+        loss = 0
+
+            self.model.ws[layer_idx] = (
+                self.model.ws[layer_idx] - self.learning_rate * grad
+        loss=cross_entropy_loss(Y_batch, logits)  # sol
+
+        return loss
+        """
+
+    def validation_step(self):
+        """
+        Perform a validation step to evaluate the model at the current step for the validation set.
+        Also calculates the current accuracy of the model on the train set.
+        Returns:
+            loss (float): cross entropy loss over the whole dataset
+            accuracy_ (float): accuracy over the whole dataset
+        Returns:
+            loss value (float) on batch
+            accuracy_train (float): Accuracy on train dataset
+            accuracy_val (float): Accuracy on the validation dataset
+        """
+        # NO NEED TO CHANGE THIS FUNCTION
+        logits=self.model.forward(self.X_val)
+        loss=cross_entropy_loss(self.Y_val, logits)
+
+        accuracy_train=calculate_accuracy(
+            self.X_train, self.Y_train, self.model)
+        accuracy_val=calculate_accuracy(self.X_val, self.Y_val, self.model)
+        return loss, accuracy_train, accuracy_val
 
 
 def main():
-    # Simple test on one-hot encoding
-    Y = np.zeros((1, 1), dtype=int)
-    Y[0, 0] = 3
-    Y = one_hot_encode(Y, 10)
-    assert Y[0, 3] == 1 and Y.sum() == 1, \
-        f"Expected the vector to be [0,0,0,1,0,0,0,0,0,0], but got {Y}"
+    # hyperparameters DO NOT CHANGE IF NOT SPECIFIED IN ASSIGNMENT TEXT
+    num_epochs=50
+    learning_rate=0.02 # Changed from 0.1 when using momentum
+    batch_size=32
+    neurons_per_layer=[64, 10]
+    momentum_gamma=0.9  # Task 3 hyperparameter
+    shuffle_data=True
 
-    X_train, Y_train, *_ = utils.load_full_mnist()
-    X_train = pre_process_images(X_train)
-    Y_train = one_hot_encode(Y_train, 10)
-    assert X_train.shape[1] == 785, \
-        f"Expected X_train to have 785 elements per image. Shape was: {X_train.shape}"
+    # Settings for task 2 and 3. Keep all to false for task 2.
+    use_improved_sigmoid=True
+    use_improved_weight_init=True
+    use_momentum=True
+    use_relu=False
 
-    # Modify your network here
-    neurons_per_layer = [64, 64, 10]
-    use_improved_sigmoid = True
-    use_improved_weight_init = True
-    use_relu = False
-    model = SoftmaxModel(
-        neurons_per_layer, use_improved_sigmoid, use_improved_weight_init, use_relu)
+    # Load dataset
+    X_train, Y_train, X_val, Y_val=utils.load_full_mnist()
+    X_train=pre_process_images(X_train)
+    X_val=pre_process_images(X_val)
+    Y_train=one_hot_encode(Y_train, 10)
+    Y_val=one_hot_encode(Y_val, 10)
+    # Hyperparameters
 
-    # Gradient approximation check for 100 images
-    X_train = X_train[:100]
-    Y_train = Y_train[:100]
-    for layer_idx, w in enumerate(model.ws):
-        model.ws[layer_idx] = np.random.uniform(-1, 1, size=w.shape)
+    model=SoftmaxModel(
+        neurons_per_layer, use_improved_sigmoid, use_improved_weight_init, use_relu
+    )
+    trainer=SoftmaxTrainer(
+        momentum_gamma,
+        use_momentum,
+        model,
+        learning_rate,
+        batch_size,
+        shuffle_data,
+        X_train,
+        Y_train,
+        X_val,
+        Y_val,
+    )
+    train_history, val_history=trainer.train(num_epochs)
 
-    gradient_approximation_test(model, X_train, Y_train)
+    print(
+        "Final Train Cross Entropy Loss:",
+        cross_entropy_loss(Y_train, model.forward(X_train)),
+    )
+    print(
+        "Final Validation Cross Entropy Loss:",
+        cross_entropy_loss(Y_val, model.forward(X_val)),
+    )
+    print("Train accuracy:", calculate_accuracy(X_train, Y_train, model))
+    print("Validation accuracy:", calculate_accuracy(X_val, Y_val, model))
+
+    # Plot loss for first model (task 2c)
+    plt.figure(figsize=(20, 12))
+    plt.subplot(1, 2, 1)
+    plt.ylim([0.0, 0.9])
+    utils.plot_loss(train_history["loss"],
+                    "Training Loss", npoints_to_average=10)
+    utils.plot_loss(val_history["loss"], "Validation Loss")
+    plt.legend()
+    plt.xlabel("Number of Training Steps")
+    plt.ylabel("Cross Entropy Loss - Average")
+    # Plot accuracy
+    plt.subplot(1, 2, 2)
+    plt.ylim([0.8, 0.99])
+    utils.plot_loss(train_history["accuracy"], "Training Accuracy")
+    utils.plot_loss(val_history["accuracy"], "Validation Accuracy")
+    plt.xlabel("Number of Training Steps")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.savefig("task3?_train_loss.png")
+    plt.show()
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from typing import Generator
 import mnist
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 
 def batch_loader(
@@ -20,12 +21,19 @@ def batch_loader(
         shuffle (bool): To shuffle the dataset between each epoch or not.
     """
     assert len(X) == len(Y)
-    num_batches = len(X) // batch_size
-    if not drop_last:
-        num_batches = int(np.ceil(len(X) / batch_size))
-    indices = list(range(len(X)))
+    num_samples= len(X)
 
-    # TODO (copy from last assignment) implement dataset shuffling here.
+    if shuffle:
+        np.random.shuffle(indices)
+
+    if drop_last:
+        num_batches=num_samples//batch_size
+
+
+    else:
+        num_batches=int(np.ceil(num_samples/batch_size))
+
+
 
     for i in range(num_batches):
         # select a set of indices for each batch of samples

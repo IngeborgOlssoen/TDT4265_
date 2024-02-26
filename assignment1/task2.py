@@ -1,26 +1,62 @@
 import numpy as np
 import utils
 import matplotlib.pyplot as plt
-from task2a import cross_entropy_loss, BinaryModel, pre_process_images
+from task2a import cross_entropy_loss, SoftmaxModel, one_hot_encode, pre_process_images
 from trainer import BaseTrainer
+
 np.random.seed(0)
 
 
-def calculate_accuracy(X: np.ndarray, targets: np.ndarray, model: BinaryModel) -> float:
+
+def calculate_accuracy(
+    X: np.ndarray, targets: np.ndarray, model: SoftmaxModel
+) -> float:
     """
     Args:
         X: images of shape [batch size, 785]
-        targets: labels/targets of each image of shape: [batch size, 1]
-        model: model of class BinaryModel
+        targets: labels/targets of each image of shape: [batch size, 10]
+        model: model of class SoftmaxModel
     Returns:
         Accuracy (float)
     """
-    # TODO Implement this function (Task 2c)
-    accuracy = 0.0
+    # TODO: Implement this function (copy from last assignment)
+    
+    output = model.forward(X)
+
+    # Turn output into one hot encoded prediction
+    max_indices = np.argmax(output, axis=1)
+    pred = np.zeros_like(output)
+
+    for id, row in zip(max_indices, pred):
+        row[ id ] = 1
+    
+    N = X.shape[0]
+    n_correct = 0 
+
+    # Compare results
+    for pred_row, target_row in zip(pred, targets):
+        if np.array_equal(pred_row, target_row): n_correct += 1
+
+    accuracy = n_correct / N
+
     return accuracy
 
 
-class LogisticTrainer(BaseTrainer):
+class SoftmaxTrainer(BaseTrainer):
+
+    def __init__(
+        self,
+        momentum_gamma: float,
+        use_momentum: bool,  # Task 3d hyperparmeter
+        *args,
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.momentum_gamma = momentum_gamma
+        self.use_momentum = use_momentum
+        # Init a history of previous gradients to use for implementing momentum
+        self.previous_grads = [np.zeros_like(w) for w in self.model.ws]
 
     def train_step(self, X_batch: np.ndarray, Y_batch: np.ndarray):
         """
@@ -34,9 +70,42 @@ class LogisticTrainer(BaseTrainer):
         Returns:
             loss value (float) on batch
         """
-        # TODO: Implement this function (task 2b)
-        loss = 0
+        # TODO: Implement this function (task 2c)
+
+        # Forward pass on all samples in batch
+        output = self.model.forward(X_batch)
+        
+        # Backward pass to find gradient
+        self.model.backward(X_batch, output, Y_batch)
+        
+        # Gradient update step
+        self.model.ws[0] -= self.learning_rate * self.model.grads[0]
+        self.model.ws[1] -= self.learning_rate * self.model.grads[1]
+        
+        # Add momentum term to update step
+        if self.use_momentum:
+            self.model.ws[0] -= self.learning_rate * self.momentum_gamma * self.previous_grads[0]
+            self.model.ws[1] -= self.learning_rate * self.momentum_gamma * self.previous_grads[1]
+
+            # Update previous gradients
+            self.previous_grads[0] = self.model.grads[0]
+            self.previous_grads[1] = self.model.grads[1]
+
+        # Compute loss
+        loss = cross_entropy_loss(Y_batch, output)
         return loss
+
+
+        # Code from project:
+        """
+        loss = 0
+
+            self.model.ws[layer_idx] = (
+                self.model.ws[layer_idx] - self.learning_rate * grad
+        loss=cross_entropy_loss(Y_batch, logits)  # sol
+
+        return loss
+        """
 
     def validation_step(self):
         """
@@ -51,102 +120,85 @@ class LogisticTrainer(BaseTrainer):
             accuracy_val (float): Accuracy on the validation dataset
         """
         # NO NEED TO CHANGE THIS FUNCTION
-        logits = self.model.forward(self.X_val)
-        loss = cross_entropy_loss(self.Y_val, logits)
+        logits=self.model.forward(self.X_val)
+        loss=cross_entropy_loss(self.Y_val, logits)
 
-        accuracy_train = calculate_accuracy(
+        accuracy_train=calculate_accuracy(
             self.X_train, self.Y_train, self.model)
-        accuracy_val = calculate_accuracy(
-            self.X_val, self.Y_val, self.model)
+        accuracy_val=calculate_accuracy(self.X_val, self.Y_val, self.model)
         return loss, accuracy_train, accuracy_val
 
 
 def main():
     # hyperparameters DO NOT CHANGE IF NOT SPECIFIED IN ASSIGNMENT TEXT
-    num_epochs = 50
-    learning_rate = 0.05
-    batch_size = 128
-    shuffle_dataset = False
+    num_epochs=50
+    learning_rate=0.02 # Changed from 0.1 when using momentum
+    batch_size=32
+    neurons_per_layer=[64, 10]
+    momentum_gamma=0.9  # Task 3 hyperparameter
+    shuffle_data=True
+
+    # Settings for task 2 and 3. Keep all to false for task 2.
+    use_improved_sigmoid=True
+    use_improved_weight_init=True
+    use_momentum=True
+    use_relu=False
 
     # Load dataset
-    category1, category2 = 2, 3
-    X_train, Y_train, X_val, Y_val = utils.load_binary_dataset(
-        category1, category2)
+    X_train, Y_train, X_val, Y_val=utils.load_full_mnist()
+    X_train=pre_process_images(X_train)
+    X_val=pre_process_images(X_val)
+    Y_train=one_hot_encode(Y_train, 10)
+    Y_val=one_hot_encode(Y_val, 10)
+    # Hyperparameters
 
-    X_train = pre_process_images(X_train)
-    X_val = pre_process_images(X_val)
-
-    # ANY PARTS OF THE CODE BELOW THIS CAN BE CHANGED.
-
-    # Intialize model
-    model = BinaryModel()
-    # Train model
-    trainer = LogisticTrainer(
-        model, learning_rate, batch_size, shuffle_dataset,
-        X_train, Y_train, X_val, Y_val,
+    model=SoftmaxModel(
+        neurons_per_layer, use_improved_sigmoid, use_improved_weight_init, use_relu
     )
-    train_history, val_history = trainer.train(num_epochs)
+    trainer=SoftmaxTrainer(
+        momentum_gamma,
+        use_momentum,
+        model,
+        learning_rate,
+        batch_size,
+        shuffle_data,
+        X_train,
+        Y_train,
+        X_val,
+        Y_val,
+    )
+    train_history, val_history=trainer.train(num_epochs)
 
-    # Plot and print everything you want of information
-
-    print("Final Train Cross Entropy Loss:",
-          cross_entropy_loss(Y_train, model.forward(X_train)))
-    print("Final Validation Cross Entropy Loss:",
-          cross_entropy_loss(Y_val, model.forward(X_val)))
+    print(
+        "Final Train Cross Entropy Loss:",
+        cross_entropy_loss(Y_train, model.forward(X_train)),
+    )
+    print(
+        "Final Validation Cross Entropy Loss:",
+        cross_entropy_loss(Y_val, model.forward(X_val)),
+    )
     print("Train accuracy:", calculate_accuracy(X_train, Y_train, model))
     print("Validation accuracy:", calculate_accuracy(X_val, Y_val, model))
 
-    # Plot loss for first model (task 2b)
-    plt.ylim([0., .2])
+    # Plot loss for first model (task 2c)
+    plt.figure(figsize=(20, 12))
+    plt.subplot(1, 2, 1)
+    plt.ylim([0.0, 0.9])
     utils.plot_loss(train_history["loss"],
                     "Training Loss", npoints_to_average=10)
     utils.plot_loss(val_history["loss"], "Validation Loss")
     plt.legend()
     plt.xlabel("Number of Training Steps")
     plt.ylabel("Cross Entropy Loss - Average")
-    plt.savefig("task2b_binary_train_loss.png")
-    plt.show()
-
     # Plot accuracy
-    plt.ylim([0.93, .99])
+    plt.subplot(1, 2, 2)
+    plt.ylim([0.8, 0.99])
     utils.plot_loss(train_history["accuracy"], "Training Accuracy")
     utils.plot_loss(val_history["accuracy"], "Validation Accuracy")
     plt.xlabel("Number of Training Steps")
     plt.ylabel("Accuracy")
     plt.legend()
-    plt.savefig("task2b_binary_train_accuracy.png")
-    plt.show()
-
-    # Task 2e - Create a comparison between training with and without shuffling
-    shuffle_dataset = True
-    # Intialize model
-    model = BinaryModel()
-    # Train model
-    trainer = LogisticTrainer(
-        model, learning_rate, batch_size, shuffle_dataset,
-        X_train, Y_train, X_val, Y_val,
-    )
-    train_history_shuffle, val_history_shuffle = trainer.train(num_epochs)
-
-    plt.ylim([0., .2])
-    utils.plot_loss(train_history["loss"],
-                    "Training Loss", npoints_to_average=10)
-    utils.plot_loss(
-        train_history_shuffle["loss"], "Training Loss with shuffle", npoints_to_average=10)
-    plt.legend()
-    plt.xlabel("Number of Training Steps")
-    plt.ylabel("Cross Entropy Loss - Average")
-    plt.savefig("task2e_train_loss_with_shuffle.png")
-    plt.show()
-
-    plt.ylim([0.93, .99])
-    utils.plot_loss(val_history["accuracy"], "Validation Accuracy")
-    utils.plot_loss(
-        val_history_shuffle["accuracy"], "Validation Accuracy with shuffle")
-    plt.xlabel("Number of Training Steps")
-    plt.ylabel("Accuracy")
-    plt.legend()
-    plt.savefig("task2e_train_accuracy_shuffle_difference.png")
+    plt.savefig("task3?_train_loss.png")
     plt.show()
 
 
