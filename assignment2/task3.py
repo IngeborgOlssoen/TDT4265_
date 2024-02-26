@@ -54,7 +54,7 @@ class SoftmaxTrainer(BaseTrainer):
 
         self.momentum_gamma = momentum_gamma
         self.use_momentum = use_momentum
-        # Init a history of previous gradients to use for implementing momentum
+        # Initialize a history of previous gradients to use for implementing momentum
         self.previous_grads = [np.zeros_like(w) for w in self.model.ws]
 
     def train_step(self, X_batch: np.ndarray, Y_batch: np.ndarray):
@@ -78,21 +78,21 @@ class SoftmaxTrainer(BaseTrainer):
         self.model.backward(X_batch, batch_output, Y_batch)
 
         # Update weights using the calculated gradients and learning rate
-        self.model.weights[0] -= self.learning_rate * self.model.gradient_list[0]
-        self.model.weights[1] -= self.learning_rate * self.model.gradient_list[1]
+        self.model.ws[0] -= self.learning_rate * self.model.grads[0]
+        self.model.ws[1] -= self.learning_rate * self.model.grads[1]
 
         # Incorporate momentum into the weight update if enabled
         if self.use_momentum:
-        # Adjust weight updates by adding a fraction of the previous update
-        self.model.weights[0] -= self.momentum_coeff * self.previous_updates[0]
-        self.model.weights[1] -= self.momentum_coeff * self.previous_updates[1]
+            # Adjust weight updates by adding a fraction of the previous update
+            self.model.ws[0] -= self.momentum_gamma * self.previous_grads[0]
+            self.model.ws[1] -= self.momentum_gamma * self.previous_grads[1]
 
-        # Store the current gradients for use in the next iteration
-        self.previous_updates[0] = self.model.gradient_list[0]
-        self.previous_updates[1] = self.model.gradient_list[1]
+            # Store the current gradients for use in the next iteration
+            self.previous_grads[0] = self.model.grads[0]
+            self.previous_grads[1] = self.model.grads[1]
 
-        # Calculate the loss for the current batch
-        current_loss = cross_entropy_loss(Y_batch, batch_output)
+            # Calculate the loss for the current batch
+            current_loss = cross_entropy_loss(Y_batch, batch_output)
         return current_loss
 
 
@@ -125,8 +125,8 @@ def main():
     num_epochs=50
     learning_rate=0.02 # Changed from 0.1 when using momentum
     batch_size=32
-    neurons_per_layer=[64, 10]
-    momentum_gamma=0.9  # Task 3 hyperparameter
+    neurons_per_layer = [32 for _ in range(10)] + [10] # Task 4a
+    momentum_gamma=0.9  # Task 3c
     shuffle_data=True
 
     # Settings for task 2 and 3. Keep all to false for task 2.

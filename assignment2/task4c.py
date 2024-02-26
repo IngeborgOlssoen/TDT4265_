@@ -78,34 +78,24 @@ class SoftmaxTrainer(BaseTrainer):
         self.model.backward(X_batch, batch_output, Y_batch)
         
         # Update model weights based on gradients and learning rate
-        self.model.weights[0] -= self.learning_rate * self.model.gradient_values[0]
-        self.model.weights[1] -= self.learning_rate * self.model.gradient_values[1]
+        self.model.ws[0] -= self.learning_rate * self.model.grads[0]
+        self.model.ws[1] -= self.learning_rate * self.model.grads[1]
         
         # Incorporate momentum in the weights update if enabled
         if self.use_momentum:
             # Apply momentum to weight updates
-            self.model.weights[0] -= self.momentum_rate * self.past_gradients[0]
-            self.model.weights[1] -= self.momentum_rate * self.past_gradients[1]
+            self.model.ws[0] -= self.use_momentum * self.previous_grads[0]
+            self.model.ws[1] -= self.use_momentum * self.previous_grads[1]
         
             # Refresh the stored gradients for the next iteration
-            self.past_gradients[0] = self.model.gradient_values[0]
-            self.past_gradients[1] = self.model.gradient_values[1]
+            self.previous_grads[0] = self.model.grads[0]
+            self.previous_grads[1] = self.model.grads[1]
         
         # Calculate and return the loss for the current batch
         current_loss = cross_entropy_loss(Y_batch, batch_output)
         return current_loss
 
-        # Code from project:
-        """
-        loss = 0
-
-            self.model.ws[layer_idx] = (
-                self.model.ws[layer_idx] - self.learning_rate * grad
-        loss=cross_entropy_loss(Y_batch, logits)  # sol
-
-        return loss
-        """
-
+       
     def validation_step(self):
         """
         Perform a validation step to evaluate the model at the current step for the validation set.

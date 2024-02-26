@@ -15,8 +15,8 @@ def pre_process_images(X: np.ndarray):
     assert X.shape[1] == 784, f"X.shape[1]: {X.shape[1]}, should be 784"
     # TODO implement this function (Task 2a)
 
-    my = 33.55274553571429
-    sigma = 78.87550070784701
+    my = 33.5527
+    sigma = 78.8755
 
     print("Using values from train set:")
     print("Mean: ", my)
@@ -55,9 +55,9 @@ class SoftmaxModel:
         self,
         # Number of neurons per layer
         neurons_per_layer: typing.List[int],
-        use_improved_sigmoid: bool,  # Task 3b hyperparameter
-        use_improved_weight_init: bool,  # Task 3a hyperparameter
-        use_relu: bool,  # Task 3c hyperparameter
+        use_improved_sigmoid: bool,  # Task 3b 
+        use_improved_weight_init: bool,  # Task 3a 
+        use_relu: bool,  # Task 3c 
     ):
         np.random.seed(
             1
@@ -128,14 +128,18 @@ class SoftmaxModel:
         # HINT: For performing the backward pass, you can save intermediate activations in variables in the forward pass.
         # such as self.hidden_layer_output = ...
         x_trans = X.T
-        hidden_weights = self.weights[0].T
-        output_weights = self.weights[1].T
+        hidden_weights = self.ws[0].T
+        output_weights = self.ws[1].T
 
         z_hidden = hidden_weights @ x_trans
         a_hidden = self.sigmoid(z_hidden)
+        self.z_hidden = z_hidden
+
         a_hidden_biased = np.append(a_hidden, np.ones((1, a_hidden.shape[1])), axis=0)
+        self.a_hidden_biased= np.append(a_hidden, np.ones((1, a_hidden.shape[1])), axis=0)
+        
         z_output = output_weights @ a_hidden_biased
-        y_pred = self.softmax(z_output)
+        y_pred = self.sigmoid(z_output)
 
         return y_pred.T
         
@@ -151,19 +155,20 @@ class SoftmaxModel:
             targets: labels/targets of each image of shape: [batch size, num_classes]
         """
         # TODO implement this function (Task 2b)
+
         assert (
             targets.shape == outputs.shape
         ), f"Output shape: {outputs.shape}, targets: {targets.shape}"
         # A list of gradients.
         # For example, self.grads[0] will be the gradient for the first hidden layer
-
-        
+       
         N = X.shape[0]
         x_trans = X.T
-        W_o = self.weights[1].T
+        W_o = self.ws[1].T
         W_o_tilde = W_o[:, :-1]
         y_hat_trans = outputs.T
         targets_trans = targets.T
+        
 
         delta_o = y_hat_trans - targets_trans
         delta_h = (W_o_tilde.T @ delta_o) * self.sigmoid_derivative(self.z_hidden)
@@ -258,7 +263,7 @@ def main():
         X_train.shape[1] == 785
     ), f"Expected X_train to have 785 elements per image. Shape was: {X_train.shape}"
 
-    neurons_per_layer = [64, 10]
+    neurons_per_layer =  [32 for _ in range(10)] + [10]
     use_improved_sigmoid = True
     use_improved_weight_init = True
     use_relu = True

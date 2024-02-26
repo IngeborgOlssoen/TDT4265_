@@ -13,7 +13,6 @@ def batch_loader(
     Creates a batch generator over the whole dataset (X, Y) which returns a generator iterating over all the batches.
     This function is called once each epoch.
     Often drop_last is set to True for the train dataset, but not for the train set.
-
     Args:
         X: images of shape [batch size, 784] in the range (0, 255)
         Y: labels of shape [batch size]
@@ -21,6 +20,13 @@ def batch_loader(
         shuffle (bool): To shuffle the dataset between each epoch or not.
     """
     assert len(X) == len(Y)
+    num_batches = len(X) // batch_size
+    if not drop_last:
+        num_batches = int(np.ceil(len(X) / batch_size))
+    indices = list(range(len(X)))
+
+    # TODO (task 2e) implement dataset shuffling here.
+
     num_samples= len(X)
 
     if shuffle:

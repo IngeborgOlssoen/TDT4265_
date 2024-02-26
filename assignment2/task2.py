@@ -7,38 +7,21 @@ from trainer import BaseTrainer
 np.random.seed(0)
 
 
-def calculate_accuracy(
-    X: np.ndarray, targets: np.ndarray, model: SoftmaxModel
-) -> float:
+def calculate_accuracy(X: np.ndarray, targets: np.ndarray, model: SoftmaxModel) -> float:
     """
     Args:
         X: images of shape [batch size, 785]
-        targets: labels/targets of each image of shape: [batch size, 10]
-        model: model of class SoftmaxModel
+        targets: labels/targets of each image of shape: [batch size, 1]
+        model: model of class BinaryModel
     Returns:
         Accuracy (float)
     """
-    # TODO: Implement this function (copy from last assignment)
+    # TODO Implement this function (Task 2c)
+    predictions =model.forward(X)
+    correct_predictions= np.count_nonzero(np.argmax(predictions)==np.argmax(targets))
+    accuracy=correct_predictions/len(targets)
     
-    model_output = model.forward(X)
-
-    # Turn model_output into one-hot encoded prediction
-    max_idxs = np.argmax(model_output, axis=1)
-    one_hot_predictions = np.zeros_like(model_output)
-
-    for idx, one_hot_row in zip(max_idxs, one_hot_predictions):
-        one_hot_row[idx] = 1
-  
-    total_samples = X.shape[0]
-    total_correct = 0
-
-    # Compare one_hot_predictions with actual targets
-    for prediction, actual in zip(one_hot_predictions, targets):
-        if np.array_equal(prediction, actual): total_correct += 1
-
-    prediction_accuracy = total_correct / total_samples
-
-    return prediction_accuracy
+    return accuracy
 
 class SoftmaxTrainer(BaseTrainer):
 
@@ -72,20 +55,20 @@ class SoftmaxTrainer(BaseTrainer):
 
         # Forward pass on all samples in batch
           # Output from the model
-        model_results = model.forward(X)
+        model_results = self.model.forward(X_batch)
 
         # Convert model_results to one-hot encoded predictions
         highest_indices = np.argmax(model_results, axis=1)
         predictions_one_hot = np.zeros_like(model_results)
 
         for index_max, prediction_row in zip(highest_indices, predictions_one_hot):
-        prediction_row[index_max] = 1
+            prediction_row[index_max] = 1
   
-        total_entries = X.shape[0]
-        correct_predictions = 0 
+            total_entries = X_batch.shape[0]
+            correct_predictions = 0 
 
         # Evaluating accuracy by comparing predictions_one_hot with actual targets
-        for predicted, actual in zip(predictions_one_hot, targets):
+        for predicted, actual in zip(predictions_one_hot, Y_batch):
             if np.array_equal(predicted, actual): correct_predictions += 1
 
         computed_accuracy = correct_predictions / total_entries
@@ -122,7 +105,7 @@ def main():
     num_epochs=50
     learning_rate=0.02 # Changed from 0.1 when using momentum
     batch_size=32
-    neurons_per_layer=[64, 10]
+    neurons_per_layer= [32 for _ in range(10)] + [10] # Task 4a
     momentum_gamma=0.9  # Task 3 hyperparameter
     shuffle_data=True
 

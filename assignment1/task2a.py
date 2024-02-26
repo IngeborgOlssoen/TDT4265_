@@ -4,27 +4,29 @@ np.random.seed(1)
 
 
 def pre_process_images(X: np.ndarray):
-      """
+    """
+    Normalizes the image data and applies the bias trick.
+    
     Args:
         X: images of shape [batch size, 784] in the range (0, 255)
+        
     Returns:
-        X: images of shape [batch size, 785] normalized as described in task2a
+        X: images of shape [batch size, 785] normalized and with an added bias term
     """
     assert X.shape[1] == 784, f"X.shape[1]: {X.shape[1]}, should be 784"
-    # TODO implement this function (Task 2a)
 
+    
     my = 33.55274553571429
     sigma = 78.87550070784701
 
-    print("Using values from train set:")
-    print("Mean: ", u)
-    print("Standard deviation: ", s, "\n")
+    # Convert to float
+    X = X.astype(np.float32)
 
-    #  normalization
-    X = (X - my) / sigma    
+    # Normalization
+    X = (X - my) / sigma
 
-    # Bias trick: Add  1 to the end of each input vector
-    X = np.append(X, np.ones((X.shape[0], 1)), axis=1)    
+    # Bias trick: Add a column of 1s to the end of each input vector
+    X = np.hstack((X, np.ones((X.shape[0], 1))))
 
     return X
     
