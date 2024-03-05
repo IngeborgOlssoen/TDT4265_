@@ -30,19 +30,19 @@ class ExampleModel(nn.Module):
         self.feature_extractor = nn.Sequential(
             #Layer 1
             nn.Conv2d(in_channels=image_channels, out_channels=self.num_filters, kernel_size=5, stride=1, padding=2),
-            nn.BatchNorm2d(self.num_filters),
+            #nn.BatchNorm2d(self.num_filters),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             #Layer 2
             nn.Conv2d(in_channels=self.num_filters, out_channels=self.num_filters*2, kernel_size=5, padding=2),
-            nn.BatchNorm2d(self.num_filters*2),
+            #nn.BatchNorm2d(self.num_filters*2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             #Layer 3
             nn.Conv2d(in_channels=self.num_filters*2, out_channels=self.num_filters*4, kernel_size=5, padding=2),
-            nn.BatchNorm2d(self.num_filters*4),
+            #nn.BatchNorm2d(self.num_filters*4),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
 

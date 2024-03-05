@@ -22,6 +22,9 @@ def compute_loss_and_accuracy(
     """
     average_loss = 0
     accuracy = 0
+    total_loss=0
+    total_predictions =0
+    correct_predictions=0
     
     # TODO: Implement this function (Task  2a)
     with torch.no_grad():
