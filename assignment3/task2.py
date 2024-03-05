@@ -16,28 +16,68 @@ class ExampleModel(nn.Module):
         """
         super().__init__()
         # TODO: Implement this function (Task  2a)
-        num_filters = 32  # Set number of filters in first conv layer
+        self.num_filters = 32  # Set number of filters in first conv layer
         self.num_classes = num_classes
         # Define the convolutional layers
-        self.feature_extractor = nn.Sequential(
-            nn.Conv2d(
-                in_channels=image_channels,
-                out_channels=num_filters,
-                kernel_size=5,
-                stride=1,
-                padding=2,
-            )
-        )
-        # The output of feature_extractor will be [batch_size, num_filters, 16, 16]
-        self.num_output_features = 32 * 32 * 32
+
+
+        # Initialize weights for Convolutional and Linear layers
+        self.num_output_features = 128 * 4 * 4
         # Initialize our last fully connected layer
+        
+        
+        
+        self.feature_extractor = nn.Sequential(
+            #Layer 1
+            nn.Conv2d(in_channels=image_channels, out_channels=self.num_filters, kernel_size=5, stride=1, padding=2),
+            nn.BatchNorm2d(self.num_filters),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            #Layer 2
+            nn.Conv2d(in_channels=self.num_filters, out_channels=self.num_filters*2, kernel_size=5, padding=2),
+            nn.BatchNorm2d(self.num_filters*2),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            #Layer 3
+            nn.Conv2d(in_channels=self.num_filters*2, out_channels=self.num_filters*4, kernel_size=5, padding=2),
+            nn.BatchNorm2d(self.num_filters*4),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+        )
+        
+            
+        
+        # The output of feature_extractor will be [batch_size, num_filters, 16, 16]
+       
+
+        #self.fc2= nn.Linear(in_features=image_channels, out_features= num_filters)
         # Inputs all extracted features from the convolutional layers
         # Outputs num_classes predictions, 1 for each class.
         # There is no need for softmax activation function, as this is
         # included with nn.CrossEntropyLoss
+        # Definer fully connected layers
         self.classifier = nn.Sequential(
-            nn.Linear(self.num_output_features, num_classes),
+            nn.Linear(self.num_output_features, 64),
+            nn.ReLU(),
+            nn.Linear(64, num_classes),
         )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
+
+    
+        #self.fc1 = nn.Linear(in_features=image_channels,out_features=self.num_filters)
+    
+        
 
     def forward(self, x):
         """
@@ -47,6 +87,20 @@ class ExampleModel(nn.Module):
         """
         # TODO: Implement this function (Task  2a)
         batch_size = x.shape[0]
+        
+        print(batch_size)
+        # Pass input through the feature extractor layers
+
+        x= self.feature_extractor(x)
+        print(x)
+        print(x.size())
+        
+        x=x.view(-1,self.num_output_features)
+        print(x.size())
+        x= self.classifier(x)
+        print(x.size())
+        
+
         out = x
         expected_shape = (batch_size, self.num_classes)
         assert out.shape == (

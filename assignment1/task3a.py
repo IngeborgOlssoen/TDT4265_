@@ -49,20 +49,10 @@ class SoftmaxModel: #github_pat_11BDGJR4I00GNfvacxaTBn_Zn7KK7uSW12puOFvFrAI25yk7
         """
         # TODO implement this function (Task 3a)
 
-        pre_activation= X@self.w
-
+        exp_X= np.exp(X-np.max(X))
+        softmax_probs= exp_X/ np.sum(exp_X,axis=0)
         
-        row_sums= np.array(
-            [np.sum(np.exp(row)) 
-            for row in pre_activation]
-        )
-
-        post_activation= np.array(
-            [np.exp(row)/row_sums[i]
-            for i,row in enumerate(pre_activation)]
-        )
-        
-        return post_activation
+        return softmax_probs
 
     def backward(self, X: np.ndarray, outputs: np.ndarray, targets: np.ndarray) -> None:
         """
@@ -103,7 +93,12 @@ def one_hot_encode(Y: np.ndarray, num_classes: int):
     """
     # TODO implement this function (Task 3a)
        # Create an identity matrix with dimensions num_classes
-    n_ex= Y.size
+    # Use integer indexing to map the values in Y to one-hot vectors
+    one_hot_matrix = np.eye(num_classes)
+    Y_one_hot = one_hot_matrix[Y.reshape(-1)].astype(int)
+    
+    return Y_one_hot
+
 
     
     
