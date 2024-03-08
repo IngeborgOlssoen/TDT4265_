@@ -42,12 +42,17 @@ def compute_loss_and_accuracy(
             loss = loss_criterion(output_probs, Y_batch)
 
             
-            total_loss += loss.item() * X_batch.size(0)  # Multiply by batch size
+            average_loss += loss_criterion(output_probs, Y_batch).item()
+
+            average_loss += loss_criterion(output_probs, Y_batch).item()
+            total_loss += loss.item()
+            total_predictions += X_batch.size(0)
             
             # Compute Accuracy
-            _, predicted_labels = torch.max(output_probs, 1)
+            _, predicted_labels = torch.max(output_probs, dim=1)
             correct_predictions += (predicted_labels == Y_batch).sum().item()
-            total_predictions += Y_batch.size(0)
+           
+        
 
             average_loss = total_loss / total_predictions
             accuracy = correct_predictions / total_predictions
@@ -65,7 +70,10 @@ class Trainer:
                  early_stop_count: int,
                  epochs: int,
                  model: torch.nn.Module,
-                 dataloaders: typing.List[torch.utils.data.DataLoader]):
+                 dataloaders: typing.List[torch.utils.data.DataLoader],
+                 opt = "Adam",
+                 weight_decay = 0.0
+                 ):
         """
             Initialize our trainer class.
         """
@@ -84,9 +92,13 @@ class Trainer:
         print(self.model)
 
         # Define our optimizer. SGD = Stochastich Gradient Descent
-        #self.optimizer = torch.optim.SGD(self.model.parameters(),
-                                         #self.learning_rate)
-        self.optimizer = optim.Adam(model.parameters(), lr=0.001)
+        if opt == "SGD":
+            self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, weight_decay=weight_decay)
+        elif opt == "Adam":
+            self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate, weight_decay=weight_decay)
+        else:
+            raise ValueError("Invalid optimizer")
+        
 
         # Load our dataset
         self.dataloader_train, self.dataloader_val, self.dataloader_test = dataloaders

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import utils
 from torch import nn
 from dataloaders import load_cifar10
-from trainer import Trainer
+from trainer import Trainer, compute_loss_and_accuracy
 
 
 class ExampleModel(nn.Module):
@@ -22,7 +22,7 @@ class ExampleModel(nn.Module):
 
 
         # Initialize weights for Convolutional and Linear layers
-        self.num_output_features = 128 * 4 * 4
+        self.num_output_features =  4 * 4 * 128
         # Initialize our last fully connected layer
         
         
@@ -35,17 +35,17 @@ class ExampleModel(nn.Module):
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             #Layer 2
-            nn.Conv2d(in_channels=self.num_filters, out_channels=self.num_filters*2, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=self.num_filters, out_channels=64, kernel_size=5, stride=1, padding=2),
             nn.BatchNorm2d(self.num_filters*2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             #Layer 3
-            nn.Conv2d(in_channels=self.num_filters*2, out_channels=self.num_filters*4, kernel_size=5, padding=2),
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=5, stride= 1, padding=2),
             nn.BatchNorm2d(self.num_filters*4),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            
+
         )
         
             
@@ -59,22 +59,23 @@ class ExampleModel(nn.Module):
         # There is no need for softmax activation function, as this is
         # included with nn.CrossEntropyLoss
         # Definer fully connected layers
-
         self.classifier = nn.Sequential(
             nn.Linear(self.num_output_features, 64),
             nn.ReLU(),
             nn.Linear(64, num_classes),
         )
 
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.constant_(m.bias, 0)
+        #for m in self.modules():
+         #   if isinstance(m, nn.Conv2d):
+          #      nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+           #     if m.bias is not None:
+            #        nn.init.constant_(m.bias, 0)
+            #elif isinstance(m, nn.Linear):
+             #   nn.init.normal_(m.weight, 0, 0.01)
+              #  nn.init.constant_(m.bias, 0)
 
+    
+        #self.fc1 = nn.Linear(in_features=image_channels,out_features=self.num_filters)
     
         
 
@@ -143,10 +144,34 @@ def main():
     dataloaders = load_cifar10(batch_size)
     model = ExampleModel(image_channels=3, num_classes=10)
     trainer = Trainer(
-        batch_size, learning_rate, early_stop_count, epochs, model, dataloaders
+        batch_size,
+        learning_rate,
+        early_stop_count,
+        epochs,
+        model,
+        dataloaders
     )
     trainer.train()
     create_plots(trainer, "task2")
+
+    
+    train_loss, train_acc = compute_loss_and_accuracy(
+        trainer.dataloader_train, trainer.model, trainer.loss_criterion
+    )
+    print("Train loss: ", train_loss)
+    print("Train accuracy: ", train_acc)
+
+    val_loss, val_acc = compute_loss_and_accuracy(
+        trainer.dataloader_val, trainer.model, trainer.loss_criterion
+    )
+    print("Validation loss: ", val_loss)
+    print("Validation accuracy: ", val_acc)
+
+    test_loss, test_acc = compute_loss_and_accuracy(
+        trainer.dataloader_test, trainer.model, trainer.loss_criterion
+    )
+    print("Test loss: ", test_loss)
+    print("Test accuracy: ", test_acc)
 
 
 if __name__ == "__main__":
