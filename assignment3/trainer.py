@@ -4,6 +4,7 @@ import time
 import collections
 import utils
 import pathlib
+import torch.optim as optim
 
 
 def compute_loss_and_accuracy(
@@ -59,7 +60,8 @@ class Trainer:
 
     def __init__(self,
                  batch_size: int,
-                 learning_rate: float,
+                 learning_rate: 0.01,
+                 momentum : 0.9,
                  early_stop_count: int,
                  epochs: int,
                  model: torch.nn.Module,
@@ -70,6 +72,7 @@ class Trainer:
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.early_stop_count = early_stop_count
+        self.momentum=momentum
         self.epochs = epochs
 
         # Since we are doing multi-class classification, we use CrossEntropyLoss
@@ -81,8 +84,9 @@ class Trainer:
         print(self.model)
 
         # Define our optimizer. SGD = Stochastich Gradient Descent
-        self.optimizer = torch.optim.SGD(self.model.parameters(),
-                                         self.learning_rate)
+        #self.optimizer = torch.optim.SGD(self.model.parameters(),
+                                         #self.learning_rate)
+        self.optimizer = optim.Adam(model.parameters(), lr=0.001)
 
         # Load our dataset
         self.dataloader_train, self.dataloader_val, self.dataloader_test = dataloaders

@@ -30,22 +30,22 @@ class ExampleModel(nn.Module):
         self.feature_extractor = nn.Sequential(
             #Layer 1
             nn.Conv2d(in_channels=image_channels, out_channels=self.num_filters, kernel_size=5, stride=1, padding=2),
-            #nn.BatchNorm2d(self.num_filters),
+            nn.BatchNorm2d(self.num_filters),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             #Layer 2
             nn.Conv2d(in_channels=self.num_filters, out_channels=self.num_filters*2, kernel_size=5, padding=2),
-            #nn.BatchNorm2d(self.num_filters*2),
+            nn.BatchNorm2d(self.num_filters*2),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
             
             #Layer 3
             nn.Conv2d(in_channels=self.num_filters*2, out_channels=self.num_filters*4, kernel_size=5, padding=2),
-            #nn.BatchNorm2d(self.num_filters*4),
+            nn.BatchNorm2d(self.num_filters*4),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),
-
+            
         )
         
             
@@ -59,6 +59,7 @@ class ExampleModel(nn.Module):
         # There is no need for softmax activation function, as this is
         # included with nn.CrossEntropyLoss
         # Definer fully connected layers
+
         self.classifier = nn.Sequential(
             nn.Linear(self.num_output_features, 64),
             nn.ReLU(),
@@ -74,8 +75,6 @@ class ExampleModel(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 nn.init.constant_(m.bias, 0)
 
-    
-        #self.fc1 = nn.Linear(in_features=image_channels,out_features=self.num_filters)
     
         
 
