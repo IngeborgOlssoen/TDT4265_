@@ -1,10 +1,12 @@
 import pathlib
 import matplotlib.pyplot as plt
 import utils
+import torch
 from torch import nn
 from dataloaders import load_cifar10
+from torchvision import transforms
 from trainer import Trainer, compute_loss_and_accuracy
-
+from torch.optim.lr_scheduler import StepLR
 
 class ExampleModel(nn.Module):
     def __init__(self, image_channels, num_classes):
@@ -89,20 +91,6 @@ class ExampleModel(nn.Module):
             nn.Linear(64, num_classes),
         )
 
-        #for m in self.modules():
-         #   if isinstance(m, nn.Conv2d):
-          #      nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-           #     if m.bias is not None:
-            #        nn.init.constant_(m.bias, 0)
-            #elif isinstance(m, nn.Linear):
-             #   nn.init.normal_(m.weight, 0, 0.01)
-              #  nn.init.constant_(m.bias, 0)
-
-    
-        #self.fc1 = nn.Linear(in_features=image_channels,out_features=self.num_filters)
-    
-        
-
     def forward(self, x):
         """
         Performs a forward pass through the model
@@ -112,19 +100,10 @@ class ExampleModel(nn.Module):
         # TODO: Implement this function (Task  2a)
         batch_size = x.shape[0]
         
-        print(batch_size)
         # Pass input through the feature extractor layers
-
         x= self.feature_extractor(x)
-        print(x)
-        print(x.size())
-        
         x=x.view(-1,self.num_output_features)
-        print(x.size())
         x= self.classifier(x)
-        print(x.size())
-        
-
         out = x
         expected_shape = (batch_size, self.num_classes)
         assert out.shape == (
@@ -132,7 +111,6 @@ class ExampleModel(nn.Module):
             self.num_classes,
         ), f"Expected output of forward pass to be: {expected_shape}, but got: {out.shape}"
         return out
-
 
 def create_plots(trainer: Trainer, name: str):
     plot_path = pathlib.Path("plots")
@@ -153,9 +131,6 @@ def create_plots(trainer: Trainer, name: str):
     plt.savefig(plot_path.joinpath(f"{name}_plot.png"))
     plt.show()
 
-
-
-
 def main():
     # Set the random generator seed (parameters, shuffling etc).
     # You can try to change this and check if you still get the same result!
@@ -167,7 +142,7 @@ def main():
     early_stop_count = 4
     dataloaders = load_cifar10(batch_size)
     model = ExampleModel(image_channels=3, num_classes=10)
-    trainer = Trainer(
+    trainer_instance = Trainer(
         batch_size,
         learning_rate,
         early_stop_count,
@@ -175,28 +150,39 @@ def main():
         model,
         dataloaders
     )
-    trainer.train()
-    create_plots(trainer, "task3")
 
-    
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = StepLR(optimizer, step_size=3, gamma=0.1)
+    trainer_instance.optimizer = optimizer  # Assigning optimizer after initialization
+
+    for epoch in range(epochs):
+        trainer_instance.train()  
+        val_loss, val_acc = trainer_instance.validate()
+        scheduler.step()   
+        print(f"Epoch {epoch + 1}/{epochs}:")
+        print(f"Training Loss: {trainer_instance.train_history['loss'][-1]}")
+        print(f"Validation Loss: {trainer_instance.validation_history['loss'][-1]}")
+        print(f"Validation Accuracy: {trainer_instance.validation_history['accuracy'][-1]}")
+
+    create_plots(trainer_instance, "task3")
+
     train_loss, train_acc = compute_loss_and_accuracy(
-        trainer.dataloader_train, trainer.model, trainer.loss_criterion
+        trainer_instance.dataloader_train, trainer_instance.model, trainer_instance.loss_criterion
     )
     print("Train loss: ", train_loss)
     print("Train accuracy: ", train_acc)
 
     val_loss, val_acc = compute_loss_and_accuracy(
-        trainer.dataloader_val, trainer.model, trainer.loss_criterion
+        trainer_instance.dataloader_val, trainer_instance.model, trainer_instance.loss_criterion
     )
     print("Validation loss: ", val_loss)
     print("Validation accuracy: ", val_acc)
 
     test_loss, test_acc = compute_loss_and_accuracy(
-        trainer.dataloader_test, trainer.model, trainer.loss_criterion
+        trainer_instance.dataloader_test, trainer_instance.model, trainer_instance.loss_criterion
     )
     print("Test loss: ", test_loss)
     print("Test accuracy: ", test_acc)
-
 
 if __name__ == "__main__":
     main()
