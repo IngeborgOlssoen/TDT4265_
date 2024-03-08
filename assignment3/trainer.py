@@ -1,3 +1,4 @@
+from ast import List
 import torch
 import typing
 import time
@@ -62,6 +63,7 @@ def compute_loss_and_accuracy(
 
 
 class Trainer:
+    
 
     def __init__(self,
                  batch_size: int,
@@ -70,7 +72,7 @@ class Trainer:
                  early_stop_count: int,
                  epochs: int,
                  model: torch.nn.Module,
-                 dataloaders: typing.List[torch.utils.data.DataLoader],
+                 dataloaders: list[torch.utils.data.DataLoader],
                  opt = "Adam",
                  weight_decay = 0.0
                  ):
@@ -80,6 +82,7 @@ class Trainer:
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.early_stop_count = early_stop_count
+        
         self.momentum=momentum
         self.epochs = epochs
 
@@ -140,6 +143,25 @@ class Trainer:
             f"Validation Accuracy: {validation_acc:.3f}",
             sep=", ")
         self.model.train()
+    
+    def validate(self):
+        """
+        Evaluates the model on the validation set.
+        """
+        # Ensure the model is in evaluation mode
+        self.model.eval()
+
+        # Compute validation loss and accuracy
+        validation_loss, validation_accuracy = compute_loss_and_accuracy(
+            self.dataloader_val, self.model, self.loss_criterion)
+
+        # Print validation results (optional)
+        print(f"Validation Loss: {validation_loss:.4f}, Validation Accuracy: {validation_accuracy:.4f}")
+
+        # Ensure the model is back in training mode
+        self.model.train()
+
+        return validation_loss, validation_accuracy
 
     def should_early_stop(self):
         """

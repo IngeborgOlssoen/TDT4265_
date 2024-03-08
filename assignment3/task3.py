@@ -131,6 +131,51 @@ def create_plots(trainer: Trainer, name: str):
     plt.savefig(plot_path.joinpath(f"{name}_plot.png"))
     plt.show()
 
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader, random_split
+
+def load_cifar10(batch_size, augment=False):
+    # Define the standard normalization for CIFAR-10
+    normalize = transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                                     std=[0.25, 0.25, 0.25])
+    
+    # When augmenting, add random transformations to the training set
+    transform_list = [transforms.ToTensor(), normalize]
+    if augment:
+        transform_list = [transforms.RandomHorizontalFlip(),
+                          transforms.RandomCrop(32, padding=4)] + transform_list
+    
+    transform_train = transforms.Compose(transform_list)
+    
+    # The validation and test sets should not be augmented, only normalized
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+        normalize
+    ])
+
+    # Download and load the training data with augmentations
+    trainset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
+    train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True)
+
+    # Split trainset to create a validation set
+    val_size = 5000
+    train_size = len(trainset) - val_size
+    train_dataset, val_dataset = random_split(trainset, [train_size, val_size], generator=torch.Generator().manual_seed(42))
+
+    # Use the non-augmented transformations for validation and test sets
+    val_dataset.dataset.transform = transform_test
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    # Download and load the test data
+    testset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+    test_loader = DataLoader(testset, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader, test_loader
+
+
+
+
+
 def main():
     # Set the random generator seed (parameters, shuffling etc).
     # You can try to change this and check if you still get the same result!
@@ -140,15 +185,25 @@ def main():
     batch_size = 64
     learning_rate = 5e-2
     early_stop_count = 4
-    dataloaders = load_cifar10(batch_size)
+
+    # Load the CIFAR10 data
+    train_loader, val_loader, test_loader = load_cifar10(batch_size=64, augment=True)
+    dataloaders = [train_loader, val_loader, test_loader]
+
+    # Create the model
     model = ExampleModel(image_channels=3, num_classes=10)
+
+    # Create the trainer instance and pass the list of data loaders
     trainer_instance = Trainer(
-        batch_size,
-        learning_rate,
-        early_stop_count,
-        epochs,
-        model,
-        dataloaders
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        early_stop_count=early_stop_count,
+        epochs=epochs,
+        model=model,
+        dataloaders=dataloaders, # Pass the list of data loaders
+        opt="Adam",
+        weight_decay=0.0,
+        momentum=0.6
     )
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -186,3 +241,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    val_loss, val_acc = trainer_instance.validate()
+    print(f"Final Validation Loss: {val_loss}, Final Validation Accuracy: {val_acc}")

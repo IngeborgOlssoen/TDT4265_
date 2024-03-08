@@ -54,6 +54,28 @@ def create_plots(trainer: Trainer, name: str):
     plt.show()
 
 
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader, random_split
+
+def load_cifar10(batch_size):
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+
+        transforms.Normalize((0.5, 0.5, 0.5), (.25, .25, .25))
+    ])
+    # Last inn hele datasettet
+    dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    
+    # Del datasettet i trening og validering
+    train_set, val_set = random_split(dataset, [45000, 5000])
+    train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+
+    # Last inn testdatasettet
+    test_set = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+
+    return train_loader, val_loader, test_loader
 
 
 def main():
@@ -62,20 +84,29 @@ def main():
     utils.set_seed(0)
     print(f"Using device: {utils.get_device()}")
     epochs = 10
-    batch_size = 64
-    learning_rate = 5e-2
+    batch_size = 32
+    learning_rate = 5e-4
     early_stop_count = 4
     
 
-    dataloaders = load_cifar10(batch_size)
+    train_loader, val_loader, test_loader = load_cifar10(batch_size)
 
 
   
-    model = Model()
-    model.to(utils.get_device())
+    model = Model().to(utils.get_device())
+    
     trainer = Trainer(
-        batch_size, learning_rate, early_stop_count, epochs, model, dataloaders
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        momentum=0.9,  # Antar at dette er momentum-verdien du vil bruke
+        early_stop_count=early_stop_count,
+        epochs=epochs,
+        model=model,
+        dataloaders=[train_loader, val_loader, test_loader],  # Viktig: Passer datalasterne som en liste
+        opt="Adam",
+        weight_decay=0.0  # Antar at dette er weight_decay-verdien du vil bruke
     )
+    
     trainer.train()
     create_plots(trainer, "task4_2")
 
