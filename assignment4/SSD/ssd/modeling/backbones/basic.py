@@ -1,8 +1,10 @@
 import torch
 from typing import Tuple, List
+from torch import nn 
 
 
-class BasicModel(torch.nn.Module):
+
+class BasicModel(nn.Module):
     """
     This is a basic backbone for SSD.
     The feature extractor outputs a list of 6 feature maps, with the sizes:
@@ -10,7 +12,7 @@ class BasicModel(torch.nn.Module):
      shape(-1, output_channels[1], 19, 19),
      shape(-1, output_channels[2], 10, 10),
      shape(-1, output_channels[3], 5, 5),
-     shape(-1, output_channels[3], 3, 3),
+     shape(-1, output_channels[3], 3, 3), 
      shape(-1, output_channels[4], 1, 1)]
     """
     def __init__(self,
@@ -20,6 +22,54 @@ class BasicModel(torch.nn.Module):
         super().__init__()
         self.out_channels = output_channels
         self.output_feature_shape = output_feature_sizes
+
+        self.feature_layers = nn.ModuleList([
+            # First set: Conv -> ReLU -> MaxPool
+            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # Second set: Conv -> ReLU -> MaxPool
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+
+            # Third set: Conv -> ReLU -> Conv -> ReLU (output: 38x38)
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=64, out_channels=output_channels[0], kernel_size=3, stride=2, padding=1),
+            nn.ReLU(inplace=True),
+
+            # Fourth set: Conv -> ReLU -> Conv -> ReLU (output: 19x19)
+            nn.Conv2d(in_channels=output_channels[0], out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=128, out_channels=output_channels[1], kernel_size=3, stride=2, padding=1),
+            nn.ReLU(inplace=True),
+
+            # Fifth set: Conv -> ReLU -> Conv -> ReLU (output: 10x10)
+            nn.Conv2d(in_channels=output_channels[1], out_channels=256, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=256, out_channels=output_channels[2], kernel_size=3, stride=2, padding=1),
+            nn.ReLU(inplace=True),
+
+            # Sixth set: Conv -> ReLU -> Conv -> ReLU (output: 5x5)
+            nn.Conv2d(in_channels=output_channels[2], out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=128, out_channels=output_channels[3], kernel_size=3, stride=2, padding=1),
+            nn.ReLU(inplace=True),
+
+            # Seventh set: Conv -> ReLU -> Conv -> ReLU (output: 3x3)
+            nn.Conv2d(in_channels=output_channels[3], out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=128, out_channels=output_channels[4], kernel_size=3, stride=2, padding=1),
+            nn.ReLU(inplace=True),
+
+            # Eighth set: Conv -> ReLU (output: 1x1)
+            nn.Conv2d(in_channels=output_channels[4], out_channels=128, kernel_size=3, stride=1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=128, out_channels=output_channels[5], kernel_size=1, stride=1, padding=0),
+            nn.ReLU(inplace=True),
+        ])
 
     def forward(self, x):
         """
